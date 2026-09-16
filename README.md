@@ -1,6 +1,6 @@
 # Layered Documentation Framework
 
-A structured approach to documenting software products across the full development lifecycle. Designed for consulting teams that work across multiple clients and tech stacks, where knowledge needs to survive team rotations, client handoffs, and the pressure of delivery.
+A structured approach to documenting digital products across the full development lifecycle. Designed for consulting teams that work across multiple clients and tech stacks, where knowledge needs to survive team rotations, client handoffs, and the pressure of delivery.
 
 ---
 
