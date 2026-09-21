@@ -3,7 +3,7 @@ title: "Product Brief"
 layer: product
 owner: "Matias Salzman"
 status: needs_review
-last_updated: 2026-09-15
+last_updated: 2026-09-20
 relates_to:
   - layers/layer-0-business/latest/business-overview.md
   - layers/layer-0-business/latest/competitive-landscape.md
@@ -40,13 +40,13 @@ Dos grupos quedan deliberadamente fuera del usuario primario en esta fase. Los p
 
 ## Product Vision
 
-Un objeto conectado que vive sobre el escritorio o la mesa de luz y muestra de forma permanente la glucosa actual, la flecha de tendencia y el delta, legibles desde el otro lado de la habitación y sin pedir nada a cambio: no suena, no notifica, no exige ser descartado. Se enchufa por USB-C, se configura una vez desde el navegador y después se comporta como un reloj de pared. El estado final que persigue es concreto y observable: que mirar el teléfono deje de ser el gesto por defecto para saber cómo se está. La diferencia frente a lo que hoy existe está en la combinación, no en los ingredientes — da el número y la tendencia, que las lámparas de color no dan, sin comportarse como un sistema de alarmas, que es lo que son los displays que sí dan el número; y es el único de la categoría pensado, configurado, garantizado y soportado en Argentina, sobre la fuente de datos que aquí es mayoritaria.
+Un objeto conectado que vive sobre el escritorio o la mesa de luz y muestra de forma permanente la glucosa actual, y la flecha de tendencia, legibles desde el otro lado de la habitación y sin pedir nada a cambio: no suena, no notifica, no exige ser descartado. Se enchufa por USB-C, se configura una vez desde el navegador y después se comporta como un reloj de pared. El estado final que persigue es concreto y observable: que mirar el teléfono deje de ser el gesto por defecto para saber cómo se está. La diferencia frente a lo que hoy existe está en la combinación, no en los ingredientes — da el número y la tendencia, que las lámparas de color no dan, sin comportarse como un sistema de alarmas, que es lo que son los displays que sí dan el número; y es el único de la categoría pensado, configurado, garantizado y soportado en Argentina, sobre la fuente de datos que aquí es mayoritaria.
 
 ---
 
 ## Scope
 
-El producto que describe este brief es una unidad para el usuario cero, construida para validar la tesis central antes de comprometer cualquier decisión irreversible. En alcance entra: la pantalla siempre presente con número, flecha de tendencia, delta y hora; un modo nocturno de brillo reducido que mantenga la lectura posible sin iluminar el cuarto; la señalización explícita e inequívoca del estado del dato —fresco, desactualizado o sin conexión— de modo que nunca haya que deducirlo; y la experiencia completa de configuración desde el propio dispositivo, sin app y sin backend.
+El producto que describe este brief es una unidad para el usuario cero. Con la tesis central ya validada, lo que esta unidad tiene que probar es lo que quedó abierto: que la versión calma y confiable de esa idea se sostiene en uso real y prolongado, y que otra persona con T1D pueda tener una sin que el fundador la flashee a mano. En alcance entra: la pantalla siempre presente con número, flecha de tendencia, y hora; un modo nocturno de brillo reducido que mantenga la lectura posible sin iluminar el cuarto; la señalización explícita e inequívoca del estado del dato —fresco, desactualizado o sin conexión— de modo que nunca haya que deducirlo; y la experiencia completa de configuración desde el propio dispositivo, sin app y sin backend.
 
 Esa configuración es parte del producto, no un paso previo a él. Al arrancar sin configurar, el dispositivo levanta su propio access point y muestra en pantalla el nombre de la red y un código QR. El usuario se conecta, un portal web servido por el propio dispositivo se abre solo, elige su red de casa y carga la contraseña. El dispositivo se reinicia ya en la red del hogar y muestra un segundo QR con un PIN de cuatro dígitos que da acceso al portal en su dirección local, donde se cargan las credenciales de la cuenta seguidora de LibreLinkUp y los umbrales de glucosa. La red Wi-Fi y la cuenta de CGM se pueden cambiar más tarde desde ese mismo portal sin rehacer el resto de la configuración: es la falla más costosa documentada en los competidores —el cambio de teléfono que deja el dispositivo muerto y sin camino de vuelta— y el producto la trata como requisito, no como mejora.
 
@@ -69,7 +69,7 @@ Se difieren, con criterio de entrada explícito:
 
 ## Key Assumptions
 
-- **Que ver el dato sin pedirlo cambia el comportamiento.** Es la tesis central: la hipótesis de que un objeto presente reduce de forma medible las consultas en el teléfono. **Sin validar**, y solo validable con uso continuo y sostenido. Si es falsa, ningún otro acierto del producto importa.
+- **Que ver el dato sin pedirlo cambia el comportamiento. ✅ Validado sobre el usuario cero.** Era la tesis central del proyecto y dejó de ser hipótesis: con uso continuo y sostenido, el dato presente efectivamente desplazó la consulta al teléfono. La validación es n=1 —el fundador— y eso es exactamente lo que alcanza a cubrir: establece que el mecanismo funciona, no que funcione para otra persona (supuesto siguiente) ni que siga funcionando a los seis meses (el que viene después). El riesgo del proyecto se corrió de lugar: ya no está en si la idea sirve, sino en si generaliza y si dura.
 
 - **Que la propuesta calma tiene demanda más allá del fundador.** **Sin validar, y la evidencia pública disponible apunta en contra:** el atributo más celebrado de la categoría es la alarma fuerte que despierta de noche, y la voz dominante en las reviews es la de cuidadores, no la del adulto con T1D en su escritorio. Sobre los dos competidores más parecidos a esta propuesta no existe una sola review independiente, y no hay ninguna pieza de feedback de usuarios argentinos o latinoamericanos. Es el riesgo más alto del brief y la razón por la que la validación externa es prioridad y no un paso posterior.
 
@@ -83,7 +83,7 @@ Se difieren, con criterio de entrada explícito:
 
 ## Relationship to Business Goals
 
-Este producto es el vehículo de los tres objetivos estratégicos que el MVP tiene que demostrar. La pantalla siempre presente existe para validar que el objeto físico cambia el comportamiento; la señalización del estado del dato es la traducción directa del objetivo de confiabilidad sin ambigüedad, que no es una funcionalidad sino una condición de existencia —un display ambiental en el que no se puede confiar es peor que no tener display—; y la decisión de construir la configuración real desde el dispositivo, en lugar de credenciales fijas, es lo que hace posible el tercer objetivo: que otra persona con T1D pueda tener uno y pedirlo.
+Este producto es el vehículo de los tres objetivos estratégicos que el MVP tiene que demostrar. La pantalla siempre presente es la materialización del hallazgo ya validado —que el objeto físico cambia el comportamiento— y lo que ahora hay que sostener fuera de las manos del fundador; la señalización del estado del dato es la traducción directa del objetivo de confiabilidad sin ambigüedad, que no es una funcionalidad sino una condición de existencia —un display ambiental en el que no se puede confiar es peor que no tener display—; y la decisión de construir la configuración real desde el dispositivo, en lugar de credenciales fijas, es lo que hace posible el tercer objetivo: que otra persona con T1D pueda tener uno y pedirlo.
 
 La apuesta de diferenciación del producto tiene dos niveles. La confiabilidad y la configuración son el piso: no son costo operativo ni problema de implementación, son features diseñadas, y son el terreno donde los competidores efectivamente pierden. Prácticamente toda la crítica sustantiva de la categoría cae en cuatro cubetas —Wi-Fi que se cae, app compañera pobre, acoplamiento frágil a la cuenta del CGM y soporte que no contesta— y ninguna es estética. Es, además, el único de los terrenos disputados donde el proyecto ya tiene la competencia necesaria. El diseño industrial y la presencia física del objeto son el techo: la ventaja defendible de largo plazo, la que sostiene la ambición de una marca de objetos cotidianos para personas con T1D, y la que todavía está por construirse en el área de menor experiencia del proyecto. Un piso sin techo da un producto confiable y genérico; un techo sin piso da un objeto lindo que la gente devuelve.
 
