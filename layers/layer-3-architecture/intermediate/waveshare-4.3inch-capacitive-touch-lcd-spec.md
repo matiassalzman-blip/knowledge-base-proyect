@@ -1,5 +1,17 @@
 # Waveshare 4.3inch Capacitive Touch LCD --- Product Specification
 
+> **Panel descartado para el producto.** El objeto que Glumi tiene que
+> validar mide ~183 × 114 mm y muestra hasta seis personas a la vez; a 4.3"
+> esa grilla cae a ~13 mm de dígito, legible a ~2 m, lo que rompe el
+> atributo central del producto. El panel objetivo pasó a **7", 800×480
+> preferido** --- ver `glumi-plan-prototipo-a-produccion.md` 4.1.
+>
+> El documento se conserva porque tres cosas siguen siendo válidas y
+> transferibles: la distinción entre el módulo suelto (que expone `PWM` de
+> brillo) y las placas integradas (que no), la mecánica del bus RGB
+> paralelo con RGB565, y la lista de parámetros de producción por confirmar
+> antes de un design freeze.
+
 **Product:** 4.3inch Capacitive Touch LCD, 800×480\
 **Brand:** Waveshare\
 **Part No.:** 4.3inch Capacitive Touch LCD\

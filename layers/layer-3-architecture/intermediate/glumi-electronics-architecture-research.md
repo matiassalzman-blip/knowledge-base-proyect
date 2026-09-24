@@ -1,10 +1,17 @@
 # Glumi --- investigación de arquitectura electrónica para display 4.3" 800×480
 
 **Fecha:** 2026-09-21\
-**Revisado:** 2026-09-21 --- se agregan el hallazgo de backlight vía
-CH422G, las restricciones de GPIO del N16R8, las mitigaciones
-documentadas de contención PSRAM↔Wi-Fi y el driver ST7262 como pista de
-sourcing.\
+**Revisado:** 2026-09-22 --- el panel objetivo pasa a 7"; se actualiza el
+Riesgo 5 con la consecuencia del cambio de área y se agregan los
+requisitos de flash que impone la actualización remota.\
+
+> **Alcance.** El título dice 4.3" porque ese era el panel investigado. El
+> objetivo pasó a **7", 800×480 preferido**, y casi todo lo de acá
+> transfiere sin cambios: es la misma familia de placas, el mismo SoC, el
+> mismo bus RGB565 y el mismo expansor CH422G. Lo que **no** transfiere son
+> los números atados al área del panel --- el piso de brillo (Riesgo 5) y
+> la térmica --- y el ancho de banda, que a 1024×600 pasa a estar en el
+> borde del S3 y por eso se prefiere 800×480 también en 7".\
 **Objetivo:** entender cómo Waveshare implementa un ESP32-S3 con un LCD
 IPS RGB de 4.3" / 800×480 y traducir ese reference design a una
 arquitectura de producción razonable para Glumi.
@@ -989,8 +996,8 @@ para buscar el mismo panel directo con un ODM en vez de por retail.
 
 ### Riesgo 5 --- Night experience
 
-⚠️ **Actualizado: esto ya no es sólo "requiere prueba física", es un
-bloqueo de hardware en el reference design.**
+⚠️ **No es sólo "requiere prueba física": es un bloqueo de hardware en el
+reference design, y el salto a 7" lo agranda.**
 
 En las placas de Waveshare (`ESP32-S3-Touch-LCD-4.3` y `4.3B`) el
 backlight **no** cuelga de un GPIO del ESP32-S3: está detrás del expansor
@@ -1015,7 +1022,29 @@ Para habilitar dimming en P1, elegir una:
 ```
 
 Y medir: brillo mínimo estable a oscuras, flicker a distancia de mesa de
-luz, uniformidad a bajo duty, y a qué duty deja de ser legible.
+luz, uniformidad a bajo duty, a qué duty deja de ser legible y **a qué duty
+deja de iluminar el cuarto**.
+
+**El salto a 7" cambia la magnitud del problema.** La superficie emisora
+pasa de 95 × 54 = 5.130 mm² a 154 × 86 = 13.244 mm²: **~2,6× más luz al
+mismo duty**. El requisito de "≤1--2 % de duty" se calibró contra el panel
+chico y por lo tanto **ya no significa nada**: un porcentaje de duty
+depende del backlight, del número de LEDs y del área, y no transfiere entre
+paneles de distinto tamaño.
+
+El requisito se re-expresa como resultado medido --- *legible a distancia de
+lectura en un cuarto a oscuras, sin iluminar el cuarto, sin flicker
+perceptible* --- y el duty mínimo que lo cumple es lo que P1 mide. Ese
+número medido es el que entra como requisito de la PCB.
+
+Riesgo asociado: con 2,6× de área, el umbral "deja de ser legible" y el
+umbral "deja de iluminar el cuarto" pueden cruzarse. Si se cruzan, el modo
+nocturno no cierra en 7", y es un hallazgo de P1, no de P3.
+
+Verificar además **dónde va `LCD_BL` en el esquemático de la placa de 7"
+concreta antes de comprarla**. Es de la misma familia y presumiblemente
+comparte la arquitectura, pero comprar sin mirarlo es comprar una placa que
+no puede validar el exit criterion por el que P1 existe.
 
 270 cd/m² de máximo no dice nada sobre el piso, y el piso es el producto
 entero de noche.

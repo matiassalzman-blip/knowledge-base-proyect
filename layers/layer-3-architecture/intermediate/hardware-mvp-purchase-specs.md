@@ -1,17 +1,19 @@
 ---
-title: "Hardware — Especificaciones de Componentes Comprados (MVP #1)"
+title: "Hardware — Especificaciones de Componentes Comprados (P0)"
 layer: architecture
 owner: "Matias Salzman"
 status: draft
-last_updated: 2026-09-16
+last_updated: 2026-09-22
 relates_to:
   - layers/layer-3-architecture/intermediate/hardware-component-selection-research.md
   - layers/layer-3-architecture/intermediate/cgm-data-pipeline-integration-plan.md
 ---
 
-# Hardware — Especificaciones de Componentes Comprados (MVP #1)
+# Hardware — Especificaciones de Componentes Comprados (P0)
 
-Registro de los 5 componentes ya comprados en MercadoLibre para el armado en protoboard de la unidad #1. Es un artefacto intermedio: documenta lo que se compró, no evalúa alternativas (eso ya lo cubre [Hardware — Desglose de Componentes](hardware-component-selection-research.md)).
+Registro de los 5 componentes comprados en MercadoLibre para el armado en protoboard de **P0, el Proof of Concept**. Es un artefacto intermedio: documenta lo que se compró, no evalúa alternativas (eso ya lo cubre [Hardware — Desglose de Componentes](hardware-component-selection-research.md)).
+
+P0 ya cumplió su función —validó que el objeto físico cambia el comportamiento— y su hardware no continúa: P1 se construye sobre un panel de 7" con touch. La lista de verificación previa a esa compra está al final de este documento.
 
 ## ⚠️ Limitación de origen de los datos
 
@@ -147,3 +149,20 @@ MercadoLibre bloquea el acceso automatizado a sus páginas de producto (HTTP 403
 | 3 | Jumpers M-M pack 40 | No (genérico) | Descripción del listado, longitud, calibre, precio |
 | 4 | Protoboard 400 puntos | Sí (descripción del listado) | Color real, dimensiones, precio |
 | 5 | Jumpers M-H 30cm pack 40 | Parcial (longitud) | Descripción del listado, calibre, precio |
+
+
+---
+
+## Compra de P1 — qué verificar antes de pagar
+
+P1 se construye sobre una **placa integrada de 7" con touch capacitivo**, no sobre el display suelto: manejar un panel RGB desde una dev board significa llevar 16 líneas de datos más PCLK, HSYNC, VSYNC y DE a ~25-30 MHz, lo que exige una PCB adaptadora con largos igualados — eso es trabajo de P2.
+
+Tres cosas se confirman **antes de pagar**, porque ninguna se corrige después por firmware:
+
+| Qué | Por qué | Si sale mal |
+| --- | --- | --- |
+| Dónde va `LCD_BL` en el esquemático | En las placas de 4.3" de la misma familia el backlight cuelga del expansor CH422G y es on/off sin PWM. Sin dimming no se puede validar el modo nocturno, que es exit criterion de P1 | El hack de dimming pasa a ser trabajo obligatorio de P1 — no un bloqueo, pero hay que entrar sabiéndolo |
+| Acabado de la superficie (glossy vs. antirreflejo) | Con touch, la superficie de lectura es también superficie de contacto. En un objeto siempre encendido y leído a ~2,7 m, las huellas son pérdida de contraste sobre el único elemento que el producto muestra | No hay arreglo posterior: es óptica, no software |
+| Resolución real del panel | Se prefiere 800×480 sobre 1024×600: misma legibilidad en milímetros, la mitad del framebuffer y del ancho de banda sobre el bus RGB, que a 1024×600 está en el borde del ESP32-S3 | Tearing, drift, o refresh reducido a ~30 Hz |
+
+Referencia: [plan de prototipo a producción](../../layer-1-product/latest/glumi-plan-prototipo-a-produccion.md) 4.1 y 4.6.

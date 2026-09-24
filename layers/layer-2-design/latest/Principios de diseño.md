@@ -1,3 +1,13 @@
+---
+title: "Principios de diseño"
+layer: design
+owner: "Matias Salzman"
+status: needs_review
+last_updated: 2026-09-22
+relates_to:
+  - layers/layer-1-product/latest/product-brief.md
+---
+
 # Principios de diseño
 
 ## 1. Reducir la fricción, no reclamar atención
@@ -6,9 +16,9 @@ Glumi existe para hacer que consultar la glucosa requiera prácticamente cero es
 
 Pero estar siempre disponible no significa demandar atención. Glumi debe permanecer en segundo plano hasta que el usuario decida mirarlo.
 
-Esto significa: adaptarse al ambiente, mantener una presencia visual calma y evitar interrupciones innecesarias. De noche, por ejemplo, debería reducir su luminosidad sin dejar de ser consultable.
+Esto significa: adaptarse al ambiente, mantener una presencia visual calma y evitar interrupciones innecesarias. De noche, por ejemplo, debería reducir su luminosidad sin dejar de ser consultable — y despertar siempre en ese nivel, nunca a brillo pleno, aunque lo hayan tocado.
 
-Esto evita: parpadeos, animaciones constantes, sonidos innecesarios, gamificación, mensajes celebratorios o cualquier recurso que transforme cada cambio de glucosa en un evento.
+Esto evita: parpadeos, animaciones constantes, sonidos innecesarios, gamificación, mensajes celebratorios o cualquier recurso que transforme cada cambio de glucosa en un evento. Un countdown hacia la próxima lectura cae de este lado: con una cadencia de alrededor de un minuto la espera es más corta que el tiempo que toma mirar, así que no agrega información y sí agrega movimiento permanente.
 
 ## 2. El dato es el protagonista
 
@@ -21,7 +31,11 @@ La jerarquía visual debe hacerlo evidente: primero el valor, después su tenden
     mg/dL
 ```
 
-Glumi no busca condensar toda la experiencia de una aplicación de CGM en una pantalla más pequeña.
+Cuando Glumi muestra a varias personas, el principio no se reparte: se repite. Cada persona en pantalla es un valor protagonista con su tendencia, y lo que compite no es una glucosa contra otra sino **todo lo demás contra todas ellas**. Nombres, marcas de estado, barra superior y cualquier elemento de interfaz ocupan el lugar que les sobra a los números, nunca al revés.
+
+De ahí sale el límite duro: la cantidad de personas en pantalla no puede crecer hasta el punto en que los números dejen de leerse a distancia de habitación. Si no entra, no entra — un número que hay que acercarse a leer es peor que un número ausente, porque reconstruye exactamente la fricción que el producto vino a eliminar.
+
+Glumi no busca condensar toda la experiencia de una aplicación de CGM en una pantalla más grande.
 
 Esto significa: diseñar alrededor del número y preservar una jerarquía extremadamente clara.
 
@@ -65,17 +79,23 @@ La calma no debe confundirse con silencio informativo.
 
 Esto evita: alarmismo visual por un lado y, por el otro, una estética tan discreta que oculte información relevante.
 
-## 6. Lo cotidiano debe ser inmediato; lo excepcional puede requerir interacción
+## 6. Lo cotidiano debe ser inmediato; lo excepcional vive en el objeto, detrás de un gesto deliberado
 
 Glumi no es una pequeña computadora ni una aplicación trasladada a un objeto físico.
 
-Las acciones frecuentes deben ocurrir con poca o ninguna interacción. Las configuraciones infrecuentes pueden vivir fuera del dispositivo cuando hacerlo mantenga al objeto más simple.
+Las acciones frecuentes deben ocurrir con poca o ninguna interacción: consultar la glucosa requiere cero pasos, y esa es la acción que define al producto.
 
-Por ejemplo, consultar la glucosa debería requerir cero pasos. Configurar Wi-Fi, vincular una cuenta o modificar preferencias avanzadas puede ocurrir desde otro dispositivo.
+Las configuraciones infrecuentes —red Wi-Fi, credenciales, qué personas se muestran, preferencias— **viven en el dispositivo y no en otro lado**. Un dispositivo que depende de un teléfono para configurarse hereda el modo de falla más caro de la categoría —el cambio de teléfono que lo deja muerto y sin camino de vuelta—; un objeto que se configura solo no lo tiene.
+
+Que la configuración viva en el objeto no la convierte en algo cotidiano. De ahí el invariante que ordena toda la interacción táctil:
+
+> **El touch puede agregar capacidades, pero nunca puede quitar la que ya existe.** Todo lo que el objeto hacía sin que lo tocaran tiene que seguir pasando mientras lo tocan.
+
+En la práctica: un toque cualquiera no navega —entrar a configuración pide un gesto deliberado sobre un target chico, nunca sobre el área del número—, la navegación vuelve sola al estado por defecto sin que nadie la cancele, y la única acción destructiva del objeto vive detrás de un gesto largo y confirmado.
 
 Esto significa: favorecer la autonomía del objeto y reservar la interacción física para aquellas acciones que realmente se benefician de ella.
 
-Esto evita: menús, navegación profunda, configuraciones permanentes en pantalla y controles físicos agregados únicamente para acceder a funciones excepcionales.
+Esto evita: menús permanentes en pantalla, navegación profunda, configuración como estado en el que el objeto puede quedarse, y gestos que haya que aprender.
 
 ## 7. Diseñado para perdurar
 
@@ -84,6 +104,8 @@ Glumi debe aspirar a envejecer bien tanto física como conceptualmente.
 Su forma debe surgir de su función, proporciones, materiales y construcción, no de tendencias estéticas pasajeras. La identidad debe provenir principalmente del propio objeto, no de logos o elementos gráficos aplicados.
 
 Incluso condicionado inicialmente por fabricación mediante impresión 3D, el objeto debe sentirse deliberado y terminado, no como un prototipo tecnológico.
+
+Perdurar también es una propiedad del software: el producto depende de una fuente de datos que ya cambió su protocolo en silencio y va a volver a hacerlo. Un objeto que no puede actualizarse no envejece, vence.
 
 Esto significa: formas comprensibles, materiales honestos, detalles funcionales, construcción mantenible y una estética sobria y atemporal.
 

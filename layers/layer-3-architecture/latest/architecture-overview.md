@@ -1,174 +1,159 @@
 ---
 title: Architecture Overview
 layer: architecture
-owner: ""
-last_updated: ""
+owner: "Matias Salzman"
+last_updated: 2026-09-22
 relates_to:
   - layers/layer-1-product/latest/product-brief.md
   - layers/layer-1-product/latest/domain-glossary.md
+  - layers/layer-1-product/latest/glumi-plan-prototipo-a-produccion.md
 status: in_progress
 ---
 
 # Architecture Overview
 
-The system-level map of this product. This document defines what the system is, how its major components relate, how it integrates with external services, and the structural decisions that shape everything downstream. It is the first document engineers and tech leads read to understand the system — and the document that all Feature Technical Specs are written against.
+El mapa a nivel sistema de Glumi. Define qué es el sistema, cómo se relacionan sus partes, con qué se integra y qué decisiones estructurales condicionan todo lo que viene después.
 
-This is not a feature-by-feature specification. Feature-level technical details live in the [Feature Technical Specs](features/). This document covers the structure that all features share.
+La forma general del sistema se explica en una frase: **Glumi es un dispositivo autónomo sin servidor propio.** No hay cuenta de usuario, no hay backend de datos y ningún valor de glucosa pasa por infraestructura del proyecto. El dispositivo habla directo con la fuente de datos usando las credenciales que su dueño le cargó en la pantalla. La única infraestructura que el proyecto opera existe para una sola cosa: distribuir firmware firmado.
 
 ---
 
 ## System Context
 
-A C4 Level 1 view: what this system is, who uses it, and what external systems it connects to. Read this as the outermost boundary — everything inside the box is what we build; everything outside is what we integrate with or depend on.
-
-> **What is C4?** C4 is a model for describing software architecture at four levels of abstraction (Context, Container, Component, Code). This document uses Levels 1 and 2 only — the levels that stay useful and maintainable over the life of a project. Levels 3 and 4 are too granular for documentation; that detail lives in the code and in the Feature Technical Specs.
-
-> **Guiding questions:**
->
-> - What is the name of the system? How would you describe it in one sentence?
-> - Who are the human users? Reference personas from Layer 1 if they exist.
-> - What external systems does this system interact with — other software, APIs, services, or data sources?
-> - For each external system: does data flow in, out, or both? What triggers the interaction?
-
 ```mermaid
 C4Context
-    title System Context — [System Name]
+    title System Context — Glumi
 
-    Person(user, "User", "Description of the primary user")
-    System(system, "System Name", "One-sentence description of what the system does")
-    System_Ext(extSystem, "External System", "What it is and why this system uses it")
+    Person(pwd, "Adulto con T1D", "Configura el dispositivo y lo lee decenas de veces por día")
+    Person(conviviente, "Conviviente", "Solo lee la pantalla; no configura nada")
 
-    Rel(user, system, "Uses")
-    Rel(system, extSystem, "Calls / Reads from / Sends to")
+    System(glumi, "Glumi", "Display ambiental de glucosa. Muestra valor, tendencia y estado del dato para una o varias personas")
+
+    System_Ext(llu, "LibreLinkUp", "API no oficial de Abbott. Fuente de lecturas de las personas que la cuenta sigue")
+    System_Ext(fw, "Distribución de firmware", "Manifiesto de versiones y binarios firmados")
+
+    Rel(pwd, glumi, "Configura y lee", "Touch")
+    Rel(conviviente, glumi, "Lee")
+    Rel(glumi, llu, "Poll de lecturas", "HTTPS")
+    Rel(glumi, fw, "Consulta versión y descarga", "HTTPS")
 ```
-
-*Replace the placeholders above. Add a `Person` for each distinct user type and a `System_Ext` for each external dependency. Keep labels short — detail goes in the table below.*
-
 
 | External System | Type | Data Flow | Purpose |
 | --------------- | ---- | --------- | ------- |
-| | API / Database / Service / Event source | Inbound / Outbound / Both | |
+| LibreLinkUp | API no oficial (sin contrato, sin SLA) | Inbound | Única fuente de lecturas hasta el lanzamiento. Devuelve todas las conexiones que la cuenta sigue en una sola llamada |
+| Distribución de firmware | Hosting estático + manifiesto | Inbound | Actualización remota. Es la mitigación del modo de falla "la fuente cambió el protocolo y todas las unidades se rompen a la vez" |
+| Nightscout | API documentada del propio usuario | Inbound | Diferido a post-lanzamiento, entregado por actualización remota. Un sitio es una persona, lo que obliga al modelo de credenciales por fuente |
 
+Lo que **no** aparece en este diagrama es tan estructural como lo que aparece: no hay API propia, no hay base de datos de usuarios, no hay app móvil y no hay asociación `user ↔ device` en ningún lado.
 
 ---
 
 ## Container View
 
-A C4 Level 2 view: the major deployable or independently runnable components inside the system boundary and how they communicate. This is the view engineers use to understand where code lives and how pieces connect.
-
-> **Note on the term "container":** In C4, a container is any runnable unit with a technology choice — web app, backend API, database, background worker, message queue. It is not specific to Docker containers, though they often map to them.
-
-> **Guiding questions:**
->
-> - What are the major components — web frontend, backend API, background workers, databases, caches, queues, third-party services consumed internally?
-> - For each component: what is it responsible for? What technology does it use?
-> - How do components communicate — HTTP, gRPC, message queue, event bus, shared database?
-> - Are there components that can be scaled independently?
-> - Are there components with different deployment lifecycles?
-
 ```mermaid
 C4Container
-    title Container View — [System Name]
+    title Container View — Glumi
 
-    Person(user, "User", "Description of the primary user")
+    Person(pwd, "Adulto con T1D", "Configura y lee")
 
-    System_Boundary(system, "System Name") {
-        Container(webApp, "Web App", "React / Next.js", "What the user interacts with")
-        Container(api, "Backend API", "Node.js / Express", "Handles business logic and data access")
-        ContainerDb(db, "Database", "PostgreSQL", "Stores application data")
-        Container(worker, "Background Worker", "Technology", "Processes async jobs")
+    System_Boundary(device, "Dispositivo Glumi (ESP32-S3)") {
+        Container(ui, "Capa de presentación", "C++ / LVGL sobre RGB565", "Proyecta el estado del dominio a pantalla: valor, tendencia, marca de estado, brillo")
+        Container(poller, "Poller", "C++", "Agenda las consultas, aplica backoff y clasifica los fallos")
+        Container(adapter, "Adaptador de fuente", "C++", "Traduce el payload de la fuente al dominio. Una implementación por fuente")
+        ContainerDb(nvs, "Configuración", "NVS cifrado", "Red, credenciales de la fuente, selección de personas, preferencias. Esquema versionado")
+        Container(ota, "Cliente de actualización", "esp_https_ota", "Verifica firma, escribe el slot inactivo, marca válido o hace rollback")
     }
 
-    System_Ext(extService, "External Service", "What it does")
+    System_Boundary(ref, "Implementación de referencia (repo)") {
+        Container(core, "core", "TypeScript", "Dominio, frescura, taxonomía de errores, modelo de display")
+        Container(src, "source-librelinkup", "TypeScript", "Protocolo verificado contra la API real. Fuente de verdad de los fixtures")
+    }
 
-    Rel(user, webApp, "Uses", "HTTPS")
-    Rel(webApp, api, "Calls", "HTTPS / REST")
-    Rel(api, db, "Reads/writes", "SQL")
-    Rel(api, worker, "Enqueues jobs", "Queue")
-    Rel(api, extService, "Calls", "HTTPS")
+    System_Ext(llu, "LibreLinkUp")
+    System_Ext(fw, "Distribución de firmware")
+
+    Rel(pwd, ui, "Toca y lee")
+    Rel(ui, nvs, "Lee y escribe configuración")
+    Rel(poller, adapter, "Pide la última lectura")
+    Rel(adapter, llu, "HTTPS")
+    Rel(poller, ui, "Publica estado del dominio")
+    Rel(ota, fw, "HTTPS")
+    Rel(src, core, "Implementa el puerto")
+    Rel(core, adapter, "Paridad verificada por tests")
 ```
-
-*Replace the placeholders above. Add a `Container` for each major component, using the technology field to note the specific stack. Keep responsibilities short — detail goes in the table below.*
-
 
 | Component | Technology | Responsibility | Communicates With |
 | --------- | ---------- | -------------- | ----------------- |
-| | | | |
+| Capa de presentación | C++ sobre bus RGB565 | Proyectar estado a pantalla e interacción táctil. No decide nada del dominio | Configuración, poller |
+| Poller | C++ | Cadencia, backoff, clasificación de fallos | Adaptador, presentación |
+| Adaptador de fuente | C++ | Traducir el payload al dominio. No filtra hacia arriba nada específico del proveedor | Fuente externa |
+| Configuración | NVS cifrado, esquema versionado | Persistir red, credenciales, selección y preferencias | Presentación, adaptador |
+| Cliente de actualización | `esp_https_ota` | Verificar firma, escribir slot inactivo, rollback | Endpoint de firmware |
+| `packages/core` | TypeScript | Dominio y reglas, sin conocer proveedores | — |
+| `packages/source-librelinkup` | TypeScript | Protocolo verificado contra la API real | — |
 
+### La decisión estructural que más cuesta
+
+**Cada protocolo se escribe dos veces:** una en TypeScript, como implementación de referencia ejecutable y verificada contra la API real, y otra en C++ sobre el dispositivo. Un arnés de paridad mantiene las dos alineadas contra los mismos fixtures.
+
+Eso compra una cosa concreta y cara de conseguir de otro modo: poder investigar, reproducir y regresionar el comportamiento de una API no oficial sin un ESP32 en la mano. Y cuesta otra: **agregar una fuente no es un adaptador, son dos**, más fixtures y más rutas de paridad. Es la razón principal por la que el número de fuentes se mantiene en una hasta el lanzamiento.
+
+El puerto `GlucoseSource` no nombra a ningún proveedor: si un tipo del paquete de dominio deja entrever de qué API viene el dato, la abstracción ya se rompió.
 
 ---
 
 ## Data Architecture
 
-The high-level strategy for how data is stored, structured, and flows through the system. This is not a schema — per-feature schemas live in the Feature Technical Specs. This section captures the storage strategy and cross-cutting data decisions.
+No hay base de datos. No hay historial. El sistema retiene exactamente una lectura por persona seguida —la última— en memoria, y la descarta cuando llega la siguiente.
 
-> **Guiding questions:**
->
-> - What databases or storage systems does this product use? What is each responsible for?
-> - Is there a primary database? Is data distributed across multiple stores?
-> - What is the approach to data ownership — does each service own its data, or is there a shared database?
-> - How is data shared between components — direct database access, APIs, event streams?
-> - Are there caching layers? What is the caching strategy?
-> - How is data backed up? What are the retention requirements?
-> - Are there any data residency or sovereignty requirements?
->
-> **Recommended length:** 1-2 paragraphs with a supporting table for storage systems.
-
+Esto no es una simplificación de MVP: es la consecuencia directa de dos decisiones de producto. El producto muestra y no interpreta, así que no necesita historia. Y no existe backend de datos, así que no hay dónde ponerla aunque la necesitara.
 
 | Storage System | Type | What It Stores | Access Pattern |
 | -------------- | ---- | -------------- | -------------- |
-| | SQL / NoSQL / Cache / Object storage / Search | | Read-heavy / Write-heavy / Mixed |
+| NVS del dispositivo | Clave-valor cifrado en reposo | Red Wi-Fi, credenciales de la fuente, selección y orden de personas, preferencias, versión del esquema | Escritura rara (configuración), lectura al boot |
+| Memoria volátil | — | Última lectura por persona y estado derivado | Escritura por ciclo de poll, lectura por frame |
 
+Sobre el dato mostrado rige una regla que ordena todo aguas abajo: **no se deriva ningún valor nuevo.** Todo lo que aparece en pantalla viene del payload de la fuente o del reloj. Es lo que descarta delta y countdown, y lo que evita tener que inventar reglas de frescura para valores calculados.
 
 ---
 
 ## Security Architecture
 
-The structural security decisions — how authentication and authorization work, where trust boundaries are, and how sensitive data is protected. Feature-specific security details belong in the Feature Technical Specs.
+No hay autenticación de usuario porque no hay usuarios: quien tiene acceso físico al dispositivo tiene acceso a su configuración. Es la postura correcta para un objeto doméstico sin cuenta, y hace que el modelo de amenazas sea chico y explícito.
 
-> **Guiding questions:**
->
-> - How are users authenticated? (JWT, session-based, OAuth, SSO, API keys)
-> - How is authorization enforced? (RBAC, ABAC, per-resource policies) Where is it enforced — middleware, service layer, database?
-> - What are the trust boundaries? Which components can talk to which, and what validates that trust?
-> - How is sensitive data identified and protected — at rest and in transit?
-> - How are secrets and credentials managed? (environment variables, secrets manager, vault)
-> - Are there compliance requirements (GDPR, HIPAA, SOC 2, PCI-DSS) that shape the security model?
->
-> **Recommended length:** 1-2 paragraphs per topic. Use a table for compliance requirements if they exist.
+**Fronteras de confianza.** Son dos, y ninguna involucra infraestructura del proyecto manejando datos de salud:
+
+1. **Dispositivo ↔ fuente de datos.** Credenciales del propio usuario, guardadas cifradas en reposo en NVS, usadas solo contra el host de la fuente sobre TLS. No se registran en logs: la taxonomía de errores se diseñó con esa restricción adentro, y ningún miembro de `SourceError` lleva credenciales, tokens ni cuerpos crudos.
+2. **Dispositivo ↔ endpoint de firmware.** Es la superficie más sensible del sistema, porque una imagen arbitraria en un dispositivo donde alguien mira su glucosa es el peor resultado posible. Se defiende con **firma de imágenes**: la clave pública viaja dentro del binario flasheado y el dispositivo rechaza cualquier imagen que no verifique. La clave privada es un activo de largo plazo — perderla deja a la flota sin poder actualizarse nunca más; filtrarla deja a la flota sin poder confiar en una actualización nunca más.
+
+**Entrada de credenciales en pantalla.** La contraseña de Wi-Fi se muestra en claro mientras se tipea, con opción de ocultarla. Es una concesión deliberada: sin gestor de contraseñas ni autocompletado, el riesgo de tipear a ciegas una cadena del sticker del router supera al de un mirón en la propia casa.
+
+**Cumplimiento.** El producto se plantea como visualización secundaria no médica, con el CGM del fabricante como referencia terapéutica. La clasificación ANMAT no fue evaluada y es bloqueante para vender, no para uso personal ni para unidades entregadas sin cobrar. ⚠️
 
 ---
 
 ## Infrastructure Overview
 
-How the system is deployed and operated. This is not a runbook — operational details live in Layer 5. This section captures the structural infrastructure decisions that architecture owns.
+La infraestructura del proyecto es un hosting estático con un manifiesto de versiones y binarios firmados. No hay cómputo, no hay base de datos y no hay estado de usuario.
 
-> **Guiding questions:**
->
-> - What cloud provider(s) are used? What regions?
-> - What are the environments — development, staging, production? Are there preview or sandbox environments?
-> - How is the system deployed — containers, serverless, VMs, PaaS?
-> - What is the CI/CD pipeline structure? How does code get from repository to production?
-> - How is infrastructure defined — infrastructure as code (Terraform, Pulumi, CDK), cloud console, or managed by the client?
-> - Are there any multi-region or high-availability infrastructure requirements?
->
-> **Recommended length:** 1-2 paragraphs. A table for environments is helpful.
+Lo que la hace no trivial no es su tamaño sino su **permanencia**: cada unidad entregada o vendida consulta ese endpoint, y tiene que seguir existiendo más allá del interés del fundador en el proyecto. Una unidad que consulta un endpoint muerto es una unidad que eventualmente se rompe sin arreglo. Es el primer compromiso operativo permanente que toma Glumi, y la razón por la que se elige hosting estático barato y portable antes que cualquier cosa con runtime.
 
+Del lado del dispositivo, el equivalente a "entornos" son los **canales de firmware**, y la seguridad operativa la da el bootloader: la imagen nueva se marca válida o el bootloader vuelve solo a la anterior. Sin portal web y sin app, esa es la única red de contención que tiene el usuario — junto al reset de fábrica alcanzable desde el touch.
 
 | Environment | Purpose | Infrastructure | Access |
 | ----------- | ------- | -------------- | ------ |
-| Development | | | Team only |
-| Staging | | | Team + Client |
-| Production | | | Restricted |
-
+| Desarrollo | Implementación de referencia en TypeScript, contra fixtures y fuente falsa | Local | Fundador |
+| Dispositivo de desarrollo | Firmware flasheado por USB, sin pasar por el canal de actualización | Hardware sobre el escritorio | Fundador |
+| Canal estable | Lo que reciben las unidades entregadas y vendidas | Hosting estático + manifiesto | Público, solo lectura |
 
 ---
 
 ## Open Questions
 
-Unresolved architectural items. This section should be empty when the document reaches `status: established`.
-
-
 | Question | Context | Owner | Target Date | Status | Resolution |
 | -------- | ------- | ----- | ----------- | ------ | ---------- |
-| | | | | Open / Resolved | |
+| ¿Quién custodia la clave privada de firma y qué pasa si el proyecto se detiene? | Es el activo más sensible del sistema y no tiene plan de sucesión | Matias Salzman | Antes de la primera unidad entregada | Open | |
+| ¿La actualización se dispara sola o la aprueba el usuario? | Silenciosa es más calma; silenciosa en un objeto ligado al manejo de diabetes es una postura de riesgo que hay que elegir a propósito | Matias Salzman | Antes de implementar el cliente OTA | Open | |
+| ¿Cómo se garantiza la permanencia del endpoint de firmware? | Tiene que sobrevivir al interés del fundador en el proyecto | Matias Salzman | Antes de la primera unidad vendida | Open | |
+| ¿Cómo se representa el estado de fuente con varias personas? | Con una sola cuenta el estado es compartido; con Nightscout pasa a ser por persona. La proyección a pantalla tiene que seguir siendo total y verificable | Matias Salzman | Antes de integrar la segunda fuente | Open | |
+| ¿Las credenciales en NVS se protegen con flash encryption del ESP32-S3 o con cifrado a nivel aplicación? | Define si hace falta quemar eFuses en producción, lo que es irreversible por unidad | Matias Salzman | Antes de P3 | Open | |

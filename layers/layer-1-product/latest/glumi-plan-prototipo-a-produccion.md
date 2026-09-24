@@ -1,9 +1,41 @@
+---
+title: "Glumi — plan detallado de prototipo a producción"
+layer: product
+owner: "Matias Salzman"
+status: needs_review
+last_updated: 2026-09-22
+relates_to:
+  - layers/layer-1-product/latest/product-brief.md
+  - layers/layer-0-business/latest/strategic-goals-and-constraints.md
+  - layers/layer-3-architecture/latest/architecture-overview.md
+---
+
 # Glumi --- plan detallado de prototipo a producción
 
-**Versión:** 0.2\
-**Fecha:** 2026-09-21\
+**Versión:** 0.3\
+**Fecha:** 2026-09-22\
 **Objetivo:** definir el camino desde el prototipo funcional actual de
 Glumi hasta un producto reproducible y listo para fabricar.
+
+## Cambios en 0.3
+
+El producto que P1 tiene que validar cambió de forma, y eso mueve la mitad
+técnica del plan:
+
+-   **P1 pasa a 7"** (4.1). El objeto comercial mide ~183 × 114 mm y muestra
+    hasta seis personas; validar la presencia física sobre un panel de 4.3"
+    respondería una pregunta sobre un objeto que no se va a vender.
+-   **4.2 UI P1 reescrita.** P1 incluye touch, configuración on-device y
+    seguimiento de varias personas. La disciplina de "nada compite con el
+    número" se mantiene; la prohibición de botones y navegación no.
+-   **4.6:** el requisito de dimming se expresa como resultado medido y no
+    como porcentaje de duty, que no transfiere entre paneles de distinto
+    tamaño. La superficie emisora del 7" es ~2,6× la del 4.3".
+-   **4.8 y Gate P1 → P2** incorporan touch, multi-persona y los cimientos
+    de actualización remota.
+-   **Contradicción backend / on-device resuelta** a favor de on-device
+    (16 y 17). No hay cuenta de usuario ni backend de datos; sí hay
+    distribución de firmware.
 
 ## Cambios en 0.2
 
@@ -72,19 +104,18 @@ Glucosa real en un objeto físico
 
 El prototipo actual debe conservarse como **P0 --- Proof of Concept**.
 
-> ⚠️ **Contradicción abierta --- ¿backend sí o backend no?**
+> **Backend: no de usuario, sí de firmware.**
 >
-> Este plan describe, en las secciones 16 y 17, un backend propio con
-> cuentas de usuario, asociación `user ↔ device` y OTA. El
-> `product-brief.md` vigente declara explícitamente fuera de alcance
-> *"app móvil, backend propio y cuenta de usuario"* y especifica una
-> configuración íntegramente on-device: AP + portal cautivo + QR + PIN.
+> No hay cuenta de usuario, no hay asociación `user ↔ device` y ningún dato
+> de glucosa pasa por infraestructura propia. Las credenciales de la fuente
+> viven en el dispositivo y la configuración entera ocurre sobre su propia
+> pantalla, sin app, sin portal web y sin otro dispositivo.
 >
-> Son dos productos distintos, con modelos de seguridad, modos de falla y
-> exposición regulatoria distintos. **Hay que decidir cuál documento manda
-> antes de entrar a P3.** Hasta entonces, las secciones 16 y 17 quedan
-> marcadas como no resueltas y no deben usarse como requisito de
-> firmware.
+> La única infraestructura que el producto opera es la **distribución de
+> firmware**, y existe solo para eso: binarios firmados más un manifiesto.
+> Eso hace que las secciones 16 y 17 describan dos cosas distintas y no dos
+> versiones de la misma — puesta en marcha en el objeto, actualización desde
+> un endpoint — y ninguna de las dos requiere conocer quién es el usuario.
 
 ------------------------------------------------------------------------
 
@@ -195,17 +226,52 @@ Queremos responder:
 
 Candidato actual:
 
-**4.3" IPS --- 800×480**
+**7" IPS --- 800×480 preferido**
 
 Target aproximado:
 
 ``` text
 Área activa
-≈ 95 × 54 mm
+≈ 154 × 86 mm
 
 Diagonal
-4.3" / ≈109 mm
+7" / ≈178 mm
+
+Gabinete objetivo
+≈ 183 × 114 × 25 mm
 ```
+
+### Por qué 7" y no 4.3"
+
+La altura del área activa es el recurso escaso, porque de ella sale el alto
+de dígito y de ahí la distancia de lectura (altura ≈ distancia / 150 para
+lectura cómoda de un vistazo):
+
+  Personas en pantalla   4.3" (95×54)          7" (154×86)
+  ---------------------- --------------------- ---------------------
+  1                      ~32 mm → 4,8 m        ~32 mm → 4,8 m
+  3 apiladas             ~13 mm → 2,0 m        ~18 mm → **2,7 m**
+  6 en grilla 3×2        ~13 mm → 2,0 m        ~18 mm → **2,7 m**
+
+A 4.3", seis personas caen a distancia de brazo: el objeto deja de leerse
+desde el otro lado de la habitación y reconstruye la fricción que vino a
+eliminar. A 7" el mismo layout se sostiene.
+
+### Resolución: 800×480 antes que 1024×600
+
+La legibilidad se mide en milímetros, no en píxeles — a 2,7 m nadie percibe
+la diferencia entre 110 y 170 PPI. El ESP32-S3 sí: 1024×600 en RGB565 son
+1,2 MB de framebuffer, obligado a PSRAM, y ~100 MB/s sostenidos sobre el bus
+RGB, que está en el borde conocido del S3 y se paga con tearing o con bajar
+el refresh. 800×480 es la mitad de todo para la misma lectura.
+
+### Acabado de superficie
+
+Con touch, la superficie de lectura es también superficie de contacto. En un
+objeto siempre encendido, leído a 2,7 m y tocado a diario, las huellas son
+pérdida de contraste sobre el único elemento que el producto existe para
+mostrar. El acabado (glossy vs. antirreflejo) se confirma **antes de
+comprar**: es lo único de esta lista que no se corrige por firmware.
 
 ### Debemos evaluar físicamente
 
@@ -232,9 +298,8 @@ alrededor suyo.
 
 ## 4.2 UI P1
 
-La UI debe mantenerse deliberadamente mínima.
-
-Default:
+El estado por defecto es la lectura, y es el único estado sin salida
+explícita. Con una sola persona seguida:
 
 ``` text
         10:24
@@ -243,16 +308,39 @@ Default:
         mg/dL
 ```
 
-No incluir por defecto:
+Con varias, el layout se adapta a la cantidad y el usuario elige cuáles se
+muestran y en qué orden. El principio no se reparte: se repite. Cada persona
+es un valor protagonista con su tendencia, y lo que compite no es una
+glucosa contra otra sino todo lo demás contra todas ellas.
+
+No incluir:
 
 -   curva;
 -   gráfica histórica;
--   Wi-Fi icon;
 -   rango;
+-   delta;
+-   countdown de próxima lectura;
 -   mensajes de tranquilidad;
--   botones;
--   menú;
--   navegación.
+-   menú permanente en pantalla.
+
+### Interacción táctil
+
+P1 incluye touch porque la configuración vive entera en el dispositivo. El
+invariante que ordena toda la interacción:
+
+> El touch puede agregar capacidades, pero nunca puede quitar la que ya
+> existe. Todo lo que el objeto hacía sin que lo tocaran tiene que seguir
+> pasando mientras lo tocan.
+
+En la práctica:
+
+-   un toque cualquiera no navega; entrar a configuración pide un gesto
+    deliberado sobre un target chico, nunca sobre el área del número;
+-   la navegación vuelve sola al estado por defecto (~30 s), y el timeout se
+    suspende mientras hay entrada de texto activa;
+-   de noche el dispositivo despierta al nivel de brillo nocturno, nunca a
+    brillo pleno: tocarlo no es una razón para subir el brillo;
+-   el reset de fábrica vive detrás de un gesto largo y confirmado.
 
 ### Estados mínimos a validar
 
@@ -263,7 +351,9 @@ No incluir por defecto:
 5.  low;
 6.  stale;
 7.  unavailable;
-8.  no connection.
+8.  no connection;
+9.  unconfigured (puesta en marcha desde cero, sin otro dispositivo);
+10. varias personas con frescura distinta al mismo tiempo.
 
 ------------------------------------------------------------------------
 
@@ -347,13 +437,16 @@ Dicho de otro modo: **"P1 con electrónica de desarrollo" escondía todo el
 trabajo de P2**. Corrección:
 
 ``` text
-P1  →  Waveshare ESP32-S3-LCD-4.3   (versión sin touch)
-       USD ~28   (versión con touch, ~33)
+P1  →  placa integrada 7" con touch capacitivo
 
-       mismo panel IPS 4.3" 800×480
-       mismo ESP32-S3-WROOM-1-N16R8
-       mismo bus RGB565
+       panel IPS 7", 800×480 preferido
+       ESP32-S3-WROOM-1-N16R8
+       bus RGB565
        cero trabajo de interfaz
+
+       verificar antes de comprar: LCD_BL en el
+       esquemático, acabado de superficie,
+       resolución real  (ver 4.1 y 4.6)
 ```
 
 El display suelto recién tiene sentido en **P2**, cuando exista una PCB
@@ -402,6 +495,11 @@ En las placas de referencia de Waveshare (`ESP32-S3-Touch-LCD-4.3` y
 del expansor de IO **CH422G**, en `EXIO2 → LCD_BL`, y funciona como
 **on/off, sin PWM**.
 
+La placa de 7" es de la misma familia y presumiblemente comparte la
+arquitectura. **Verificar dónde va `LCD_BL` en el esquemático de la placa
+concreta antes de comprarla:** comprar sin mirar eso es comprar una placa
+que no puede validar el exit criterion por el que P1 existe.
+
 O sea: **tal como viene, la placa integrada no permite validar el modo
 nocturno**, que es a la vez:
 
@@ -431,14 +529,25 @@ Elegir una:
 -   brillo mínimo estable en cuarto totalmente a oscuras;
 -   flicker percibido a distancia de mesa de luz;
 -   uniformidad a bajo duty;
--   a qué duty deja de ser legible.
+-   a qué duty deja de ser legible;
+-   **a qué duty deja de iluminar el cuarto** --- que no es lo mismo, y con
+    2,6× de superficie emisora los dos umbrales pueden cruzarse. Si se
+    cruzan, el modo nocturno no cierra en 7" y hay que saberlo en P1.
 
 ### Requisito que esto fija para la PCB
 
-El driver de backlight debe permitir dimming hasta **≤1--2 % de duty**,
-con frecuencia PWM suficientemente alta --- o dimming analógico --- para
-no producir flicker visible a distancia de lectura. Esto entra en la
-sección 8 como requisito, no como deseo.
+El requisito se expresa como **resultado medido**, no como porcentaje de
+duty: un porcentaje depende del backlight, del número de LEDs y del área
+del panel, y por lo tanto no transfiere entre paneles de distinto tamaño.
+
+> Legible a distancia de lectura en un cuarto totalmente a oscuras, sin
+> iluminar el cuarto ni proyectar luz sobre superficies cercanas, y sin
+> flicker perceptible a distancia de mesa de luz.
+
+El duty mínimo que cumple eso es lo que P1 **mide**, y ese número medido es
+el que entra en la sección 8 como requisito de la PCB. El driver debe
+permitir dimming por PWM a frecuencia suficientemente alta --- o dimming
+analógico --- para alcanzarlo sin flicker.
 
 ------------------------------------------------------------------------
 
@@ -476,13 +585,19 @@ No pasar a P2 hasta tener estos valores **medidos y registrados**:
 
   Criterio               Umbral
   ---------------------- --------------------------------------------------
-  Legibilidad            número + flecha legibles a **3 m**
+  Legibilidad            número + flecha legibles a **3 m** con 1 persona
+  Legibilidad multi      legibles a **2,7 m** con 6 personas en grilla
   Legibilidad nocturna   legible en cuarto a oscuras sin iluminarlo
   Brillo mínimo          dimming estable, sin flicker visible
+  Touch ambiental        **0** navegaciones accidentales en 72 h de uso real
+  Retorno                vuelve al estado por defecto sin intervención
+  Despertar nocturno     nunca sube a brillo pleno por un toque
+  Puesta en marcha       configuración completa sin usar otro dispositivo
   Estabilidad            **72 h** continuas, 0 reboots, 0 freezes
   Reconexión             < **60 s** tras caída de Wi-Fi o router
   Render                 sin tearing ni drift con Wi-Fi activo
   Térmica                superficie < **45 °C** a las 24 h
+  Image persistence      sin retención visible tras 72 h de UI estática
   Escala                 dimensiones decididas y documentadas
   Orientación            decidida y validada en uso real
   Dirección industrial   existe y está documentada
@@ -633,7 +748,7 @@ Basándonos en la investigación del reference design de Waveshare:
           │ VSYNC               │
           │ DE                  │
           ▼                     ▼
-       LCD FFC ───────────► 4.3" IPS
+       LCD FFC ───────────► 7" IPS
                               800×480
 ```
 
@@ -991,6 +1106,31 @@ Debe contemplar:
 -   factory reset;
 -   safe failure.
 
+## Tres decisiones irreversibles
+
+Vencen al flashear la primera unidad que sale de casa, y después no se
+pueden tomar:
+
+1.  **Tabla de particiones con doble slot de aplicación** (`ota_0`,
+    `ota_1`, `otadata`). En los 16 MB del N16R8 sobra espacio. Una unidad
+    flasheada con tabla de app única no se puede actualizar nunca: la tabla
+    de particiones no se reescribe por OTA de forma segura.
+2.  **Esquema de configuración versionado** en NVS. Una unidad que guarda
+    una credencial como singleton no puede migrar a varias fuentes sin
+    perder la configuración del usuario. El número de versión cuesta cero
+    hoy.
+3.  **Par de claves de firma.** La clave pública va dentro del binario que
+    se flashea. Sin firma, quien controle el endpoint --- o quien se quede
+    con el dominio cuando venza --- empuja firmware arbitrario a un
+    dispositivo donde alguien mira su glucosa.
+
+## Camino de recuperación
+
+Sin portal web y sin app, una actualización fallida deja al usuario sin
+ninguna vía. Requiere: rollback automático --- la imagen nueva se marca
+válida o el bootloader vuelve solo a la anterior --- y reset de fábrica
+alcanzable desde el touch.
+
 ## Principio crítico
 
 Glumi sigue siendo un **display secundario**.
@@ -1002,77 +1142,90 @@ tratamiento.
 
 # 16. Onboarding
 
-> ⚠️ **No resuelto --- ver la contradicción abierta en la sección 1.**
-> Esta arquitectura asume backend propio y cuenta de usuario; el
-> `product-brief.md` vigente los declara fuera de alcance y especifica
-> configuración íntegramente on-device (AP + portal cautivo + QR + PIN).
-> No implementar hasta decidir cuál manda.
-
-En P3/P4 debe definirse el onboarding real.
-
-Arquitectura candidata:
+La puesta en marcha ocurre entera sobre la pantalla del dispositivo. No
+interviene ningún otro aparato:
 
 ``` text
 Glumi nuevo
    ↓
-setup mode
+pantalla de puesta en marcha
    ↓
-Glumi crea Wi-Fi/AP temporal
+elige red Wi-Fi de la lista
    ↓
-teléfono se conecta
+tipea la contraseña en pantalla
    ↓
-usuario selecciona Wi-Fi
+tipea credenciales de la cuenta seguidora
    ↓
-Glumi guarda credenciales
+elige a quién mostrar y en qué orden
    ↓
-se conecta al backend
-   ↓
-muestra QR/pairing code
-   ↓
-usuario vincula cuenta/fuente
-   ↓
-backend asocia
-user ↔ device ↔ glucose source
+lectura
 ```
 
-Las credenciales de Libre no deberían almacenarse directamente en el
-ESP32.
+Cualquiera de esos pasos se rehace más tarde desde la misma pantalla sin
+tocar el resto. Eso ataca de frente la falla más costosa documentada en la
+categoría --- el cambio de teléfono que deja el dispositivo muerto y sin
+camino de vuelta ---: un objeto que no necesita un teléfono para
+configurarse no la tiene.
+
+### Por qué no un portal cautivo
+
+La detección de captive portal se comporta distinto en iOS, Android, macOS
+y Windows, y es fuente crónica de "se conectó al AP y no se abrió nada". Es
+la pieza más frágil del flujo y se puede borrar entera.
+
+### Ergonomía y la contraseña de Wi-Fi
+
+Un teclado en pantalla sobre 154 mm de ancho tiene teclas más grandes que
+las de un teléfono: tipear no es el problema. El problema es la contraseña
+de Wi-Fi --- aleatoria, con símbolos, sensible a mayúsculas, leída del
+sticker del router --- sin gestor de contraseñas ni autocompletado. Se
+muestra **en claro mientras se tipea**, con opción de ocultarla: el riesgo
+de mirón en la propia casa es menor que el de tipear a ciegas.
+
+### Almacenamiento de credenciales
+
+Las credenciales de la fuente se guardan en el dispositivo, cifradas en
+reposo, bajo el esquema versionado de la sección 15. No hay a dónde más
+mandarlas: no existe backend de usuario.
 
 ------------------------------------------------------------------------
 
 # 17. Backend production-intent
 
-> ⚠️ **No resuelto --- ver la contradicción abierta en la sección 1.** El
-> `product-brief.md` vigente declara "backend propio y cuenta de usuario"
-> fuera de alcance. Si ese documento manda, esta sección se elimina, la
-> sección 16 se reescribe sobre el portal on-device, y hay que resolver
-> aparte de dónde sale el OTA que la sección 15 da por supuesto.
-
-Separar:
+La única infraestructura que el producto opera es la distribución de
+firmware:
 
 ``` text
 DEVICE
-↓
-Glumi API
-↓
-Glucose provider integration
+↓  consulta manifiesto (HTTPS)
+Manifiesto de versiones + binarios firmados
 ```
 
-El dispositivo debería conocer solamente lo necesario para autenticarse
-contra Glumi.
+Eso es todo. No hay usuarios, no hay devices registrados, no hay tokens de
+proveedor del lado servidor, no hay caching de glucosa y no hay asociación
+`user ↔ device`. El dispositivo habla directo con la fuente de datos con
+las credenciales que el usuario le cargó.
 
-Backend debe manejar:
+### Lo que sí hay que resolver
 
--   usuarios;
--   devices;
--   provider credentials/tokens;
--   association;
--   caching;
--   freshness;
--   rate limits;
--   errors;
--   security;
--   logging.
+-   **Permanencia.** El endpoint tiene que sobrevivir al interés del
+    fundador en el proyecto. Una unidad que consulta un endpoint muerto es
+    una unidad que eventualmente se rompe sin arreglo. Es el primer
+    compromiso operativo permanente que toma Glumi.
+-   **Custodia de la clave privada.** Perderla deja a la flota sin poder
+    actualizarse nunca más; filtrarla deja a la flota sin poder confiar en
+    una actualización nunca más.
+-   **Quién dispara la actualización.** Silenciosa es más calma, pero una
+    actualización silenciosa en un objeto ligado al manejo de diabetes es
+    una postura de riesgo que hay que elegir a propósito --- y nunca de
+    madrugada sin explicar por qué la pantalla se apagó un minuto.
+
+### Por qué esto importa más de lo que parece
+
+La fuente de datos ya cambió su protocolo en silencio al menos dos veces
+(`account-id`, `user-agent`). Cuando vuelva a hacerlo no falla una unidad:
+fallan todas al mismo tiempo. La actualización remota no es la vía para
+agregar features --- es la que hace posible vender.
 
 ------------------------------------------------------------------------
 
@@ -1217,7 +1370,7 @@ Ejemplo:
   ID         Categoría   Componente              MPN           Qty Estado
   ---------- ----------- ----------------------- ----------- ----- -----------
   GL-E-001   MCU         ESP32-S3 module         TBD             1 Candidate
-  GL-E-002   Display     4.3" IPS 800×480        TBD             1 Candidate
+  GL-E-002   Display     7" IPS 800×480          TBD             1 Candidate
   GL-E-003   PCB         Glumi Main PCB          GL-PCB-01       1 Custom
   GL-E-004   USB         USB-C connector         TBD             1 TBD
   GL-M-001   Housing     Front housing           GL-F01          1 Custom
@@ -1686,8 +1839,13 @@ Concepto técnico validado.
 Requiere:
 
 -   los exit criteria medibles de 4.8, con valores registrados;
--   dimming nocturno demostrado físicamente (4.6), no asumido;
+-   dimming nocturno demostrado físicamente (4.6), no asumido, con el duty
+    mínimo medido y escrito como requisito de la sección 8;
 -   decisión de form factor tomada y documentada;
+-   **los tres cimientos de actualización remota resueltos** (sección 15):
+    tabla de particiones con doble slot de aplicación, esquema de
+    configuración versionado y par de claves de firma generado. Son
+    irreversibles en cuanto una unidad sale de casa;
 -   **sección 5 completa**: volumen esperado, precio objetivo, costo BOM
     objetivo y presupuesto NRE;
 -   **decisión Track A / Track B tomada y justificada**.
@@ -1713,7 +1871,8 @@ Requiere, además de lo técnico:
 -   arquitectura congelada;
 -   principales fallos resueltos;
 -   supply chain plausible, con second source para display y módulo;
--   **contradicción backend / on-device resuelta** (sección 1);
+-   **endpoint de distribución de firmware operativo**, con rollback
+    automático y reset de fábrica probados en hardware;
 -   **riesgo LibreLinkUp evaluado**: layer-0 lo documenta como
     dependencia de una API no oficial, sin contrato ni SLA, con riesgo
     legal comercial sin evaluar;
@@ -1823,23 +1982,31 @@ MASS PRODUCTION
 
 Partiendo del estado actual, el orden recomendado es:
 
-### 0. Maqueta 1:1 en papel --- costo cero, antes de comprar nada
+### 0. Maqueta 1:1 en papel, en los dos tamaños --- antes de comprar nada
 
-Imprimir la UI a escala real (**95,04 × 53,86 mm**), montarla sobre un
-bloque y dejarla unos días en la mesa de luz y en el escritorio.
+Imprimir la UI a escala real en **106 × 68 mm** y en **183 × 114 mm**,
+montarlas sobre bloques y dejarlas unos días en la mesa de luz y en el
+escritorio.
 
-Valida tamaño tipográfico, distancia de lectura y escala del objeto ---
-varios exit criteria de P1 --- sin gastar un peso. Es exactamente el
-principio de "cada prototipo elimina una categoría de incertidumbre" con
-el que cierra este documento.
+Resuelve gratis la decisión más cara del plan: si 7" resulta demasiado
+objeto para el cuarto, la grilla de varias personas se cae sola por
+aritmética (4.1) y hay que volver a 4.3" antes de gastar un peso. Valida
+además tamaño tipográfico, distancia de lectura y escala --- varios exit
+criteria de P1. Es el principio de "cada prototipo elimina una categoría de
+incertidumbre" aplicado al costo cero.
 
 ### 1. Comprar la placa integrada, no el display suelto
 
-`Waveshare ESP32-S3-LCD-4.3`, versión **sin touch** (~USD 28; la versión
-con touch, ~USD 33).
+Placa integrada de **7" con touch capacitivo**, preferentemente 800×480
+(ver 4.1). El módulo retail suelto queda para P2, cuando exista una PCB
+donde enchufarlo.
 
-El módulo retail SKU 16249 queda para P2, cuando exista una PCB donde
-enchufarlo.
+Verificar **antes de pagar**:
+
+-   dónde va `LCD_BL` en el esquemático --- si cuelga del CH422G, el hack de
+    dimming es trabajo obligatorio de P1 (4.6);
+-   el acabado de superficie, glossy vs. antirreflejo (4.1);
+-   la resolución real del panel.
 
 ### 2. Resolver dimming de backlight
 
@@ -1876,10 +2043,11 @@ Rejected
 Completar la sección 5. Sin ese número no se puede decidir Track A vs.
 Track B, ni proceso de carcasa, ni display de producción.
 
-### 5. Resolver la contradicción backend / on-device
+### 5. Fijar los tres cimientos de actualización remota
 
-Decidir qué documento manda y actualizar el que pierda. Bloquea el diseño
-de firmware, de onboarding y de OTA.
+Tabla de particiones, esquema de configuración versionado y par de claves
+de firma (sección 15). No hace falta construir el cliente OTA todavía; sí
+hace falta que la primera unidad flasheada pueda recibirlo después.
 
 ### 6. Medir el display real
 
